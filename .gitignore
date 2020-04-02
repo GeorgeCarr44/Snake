@@ -4,3 +4,6 @@
 Snake/bin/Debug/Snake.exe
 Snake/bin
 Snake/obj
+*.suo
+Snake/bin/Debug
+Snake/obj

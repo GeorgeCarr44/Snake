@@ -24,6 +24,13 @@ namespace Snake
         Left
     }
 
+    public enum GameState
+    {
+        Playing,
+        Stopped,
+        Restarting
+    }
+
     public partial class Form1 : Form
     {
         public Form1()
@@ -36,7 +43,7 @@ namespace Snake
         public int matrixSize;
         public static CellType[,] matrix;
         public static bool GenFood;
-        public static bool GameEnd;
+        public static GameState State { get; set; }
 
         private Direction lastAcceptedInputDirection;
 
@@ -48,6 +55,8 @@ namespace Snake
         private void Timer_Tick(object sender, EventArgs e)
         {
             GameLogic();
+            if(State == GameState.Stopped)
+                timer.Stop();
             DrawMatrix();
         }
 
@@ -56,56 +65,58 @@ namespace Snake
             Bitmap bitmap = new Bitmap(pictureBox1.Width, pictureBox1.Height);
             Graphics graphics = Graphics.FromImage(bitmap);
 
-            if (endGame)
+            if (State == GameState.Stopped)
             {
-                graphics.FillRectangle(Brushes.Black, 0, 0, pictureBox1.Width, pictureBox1.Height);
+                 graphics.FillRectangle(Brushes.Black, 0, 0, pictureBox1.Width, pictureBox1.Height);
 
-                timer = new Timer();
-                timer.Interval = 3000;
-                timer.Tick += (s, e) => {
+                Timer deathTimer = new Timer();
+                deathTimer.Interval = 3000;
+                deathTimer.Tick += (s, e) =>
+                {
+
                     Initalize();
-                    timer.Stop();
+                    deathTimer.Stop();
                 };
-                timer.Start();
-
-                Initalize();
+                deathTimer.Start();
+                State = GameState.Restarting;
             }
-            else
+            else if (State == GameState.Playing)
             {
                 graphics.FillRectangle(Brushes.Gray, 0, 0, pictureBox1.Width, pictureBox1.Height);
-            }
 
-            SizeF sizeCell = new SizeF((float)pictureBox1.Width / matrixSize, (float)pictureBox1.Height / matrixSize);
 
-            for (int x = 0; x < matrixSize; x++)
-            {
-                for (int y = 0; y < matrixSize; y++)
+                SizeF sizeCell = new SizeF((float)pictureBox1.Width / matrixSize, (float)pictureBox1.Height / matrixSize);
+
+                for (int x = 0; x < matrixSize; x++)
                 {
-                    Brush color;
-
-                    switch (matrix[x,y])
+                    for (int y = 0; y < matrixSize; y++)
                     {
-                        case CellType.empty:
-                            color = Brushes.White;
-                            break;
-                        case CellType.obstical:
-                            color = Brushes.Blue;
-                            break;
-                        case CellType.head:
-                            color = Brushes.Black;
-                            break;
-                        case CellType.body:
-                            color = Brushes.Brown;
-                            break;
-                        case CellType.food:
-                            color = Brushes.Red;
-                            break;
-                        default:
-                            color = Brushes.White;
-                            break;
-                    }
+                        Brush color;
 
-                    graphics.FillRectangle( color, x * (sizeCell.Width) + 1, y * (sizeCell.Height) + 1, (sizeCell.Width) - 2, (sizeCell.Height)- 2);
+                        switch (matrix[x, y])
+                        {
+                            case CellType.empty:
+                                color = Brushes.White;
+                                break;
+                            case CellType.obstical:
+                                color = Brushes.Blue;
+                                break;
+                            case CellType.head:
+                                color = Brushes.Black;
+                                break;
+                            case CellType.body:
+                                color = Brushes.Brown;
+                                break;
+                            case CellType.food:
+                                color = Brushes.Red;
+                                break;
+                            default:
+                                color = Brushes.White;
+                                break;
+                        }
+
+                        graphics.FillRectangle(color, x * (sizeCell.Width) + 1, y * (sizeCell.Height) + 1, (sizeCell.Width) - 2, (sizeCell.Height) - 2);
+                    }
                 }
             }
             pictureBox1.BackgroundImage = bitmap;
@@ -123,8 +134,6 @@ namespace Snake
                 PlaceFood();
             snake.ChangeDirection(lastAcceptedInputDirection);
             snake.Move();
-            if (Form1.GameEnd)
-                EndGame();
             snake.UpdateMatrix(matrix);
         }
 
@@ -144,9 +153,11 @@ namespace Snake
 
         private void Initalize()
         {
+
+
             snake = new Snake();
             GenFood = false;
-            GameEnd = false;
+            State = GameState.Playing;
             timer = new Timer();
             timer.Interval = 90;
             timer.Start();
@@ -189,22 +200,6 @@ namespace Snake
                         lastAcceptedInputDirection = Direction.Left;
                     break;
             }
-        }
-
-        public void EndGame()
-        {
-            Bitmap bitmap = new Bitmap(pictureBox1.Width, pictureBox1.Height);
-            Graphics graphics = Graphics.FromImage(bitmap);
-
-            graphics.FillRectangle(Brushes.Black, 0, 0, pictureBox1.Width, pictureBox1.Height);
-
-            Timer timer = new Timer();
-            timer.Interval = 3000;
-            timer.Tick += (s, e) => {
-                Initalize();
-                timer.Stop();
-            };
-            timer.Start();
         }
     }
 
@@ -269,7 +264,7 @@ namespace Snake
 
             if (newHeadPositon.X < 0 || newHeadPositon.X > Form1.matrix.GetLength(0) - 1 || newHeadPositon.Y < 0 || newHeadPositon.Y > Form1.matrix.GetLength(0) - 1)
             {
-                Form1.GameEnd = true;
+                Form1.State = GameState.Stopped;
                 return;
             }
             else
@@ -280,7 +275,7 @@ namespace Snake
                     case CellType.obstical:
                     case CellType.head:
                     case CellType.body:
-                        Form1.GameEnd = true;
+                        Form1.State = GameState.Stopped;
                         return;
                     case CellType.food:
                         grow = true;
