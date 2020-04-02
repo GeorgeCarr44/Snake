@@ -148,10 +148,10 @@ namespace Snake
             GenFood = false;
             GameEnd = false;
             timer = new Timer();
-            timer.Interval = 100;
+            timer.Interval = 90;
             timer.Start();
             timer.Tick += Timer_Tick;
-            matrixSize = 75;
+            matrixSize = 25;
             matrix = new CellType[matrixSize, matrixSize];
             //make snake
             int midpoint = (int)Math.Round((float)matrixSize / 2);
