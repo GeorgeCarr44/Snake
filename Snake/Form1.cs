@@ -54,7 +54,7 @@ namespace Snake
         private void Form1_Load(object sender, EventArgs e)
         {
             gameTimer = new Timer();
-            gameTimer.Interval = 90;
+            gameTimer.Interval = 85;
             gameTimer.Start();
             gameTimer.Tick += Timer_Tick;
 
@@ -97,7 +97,7 @@ namespace Snake
                                 color = State != GameState.Replay ? Brushes.Black : Brushes.LightGray;
                                 break;
                             case CellType.body:
-                                color = State != GameState.Replay ? Brushes.Black : Brushes.White;
+                                color = State != GameState.Replay ? Brushes.Brown : Brushes.White;
                                 break;
                             case CellType.food:
                                 color = State != GameState.Replay ? Brushes.Red : Brushes.Black;
@@ -110,8 +110,8 @@ namespace Snake
                         graphics.FillRectangle(color, x * (sizeCell.Width) + 1, y * (sizeCell.Height) + 1, (sizeCell.Width) - 2, (sizeCell.Height) - 2);
                     }
                 }
+                pictureBox1.BackgroundImage = bitmap;
             }
-            pictureBox1.BackgroundImage = bitmap;
         }
 
         public static void ChangeIndividualCellState(int[,] position, CellType type)
@@ -132,10 +132,8 @@ namespace Snake
                     snake.UpdateMatrix(matrix);
                     break;
                 case GameState.Stopped:
-                    graphics.FillRectangle(Brushes.Black, 0, 0, pictureBox1.Width, pictureBox1.Height);
-
                     Timer deathTimer = new Timer();
-                    deathTimer.Interval = 3000;
+                    deathTimer.Interval = 1000;
                     deathTimer.Tick += (s, e) =>
                     {
 
@@ -146,7 +144,7 @@ namespace Snake
                     State = GameState.Restarting;
                     break;
                 case GameState.Restarting:
-
+              
                     break;
                 case GameState.Replay:
                     snake.Move();
@@ -154,52 +152,21 @@ namespace Snake
                     break;
                 case GameState.Death:
                     //replay
-                    gameTimer.Interval = 50;
+                    gameTimer.Interval = 1;
                     GenFood = false;
 
                     State = GameState.Replay;
-                    //Timer = new Timer();
-                    //Timer.Interval = 100;
-                    //Timer.Start();
-                    //Timer.Tick += Timer_Tick;
                     matrixSize = 25;
                     matrix = new CellType[matrixSize, matrixSize];
                     //make snake
                     int midpoint = (int)Math.Round((float)matrixSize / 2);
-                    snake = new Snake(matrixSize, snake.StartingLength, snake.StartingDirection, snake.movementHistory);
+                    snake = new Snake(matrixSize, snake.StartingLength, snake.StartingDirection, snake.movementHistory, snake.eatHistory);
                     snake.UpdateMatrix(matrix);
                     DrawMatrix();
                     break;
                 default:
                     break;
             }
-
-            //if(State == GameState.Playing)
-            //{
-            //    if (GenFood)
-            //        PlaceFood();
-            //    snake.ChangeDirection(lastAcceptedInputDirection);
-            //    snake.Move();
-            //    snake.UpdateMatrix(matrix);
-            //}
-            //else
-            
-            //{
-            //    //replay
-            //    GenFood = false;
-                
-            //    afterLifeTimer = new Timer();
-            //    afterLifeTimer.Interval = 90;
-            //    afterLifeTimer.Start();
-            //    afterLifeTimer.Tick += Timer_Tick;
-            //    matrixSize = 25;
-            //    matrix = new CellType[matrixSize, matrixSize];
-            //    //make snake
-            //    int midpoint = (int)Math.Round((float)matrixSize / 2);
-            //    snake = new Snake(matrixSize, 5, Direction.Up , snake.movementHistory);
-            //    snake.UpdateMatrix(matrix);
-            //    DrawMatrix();
-            //}
         }
 
         private void PlaceFood()
@@ -258,20 +225,14 @@ namespace Snake
         }
     }
 
-
-
-
-
-
-
-
-
     public class Snake
     {
         public List<Point> segments = new List<Point>();
         public Direction currentDirection;
 
+        private int moveCount { get; set; }
         public List<Point> movementHistory = new List<Point>();
+        public List<int> eatHistory = new List<int>();
         private List<Point> movementInstructions = new List<Point>();
 
         public int StartingLength { get; set; }
@@ -279,6 +240,8 @@ namespace Snake
 
         public Snake(int matrixSize, int startingLength, Direction startingDirection)
         {
+            eatHistory = new List<int>();
+            moveCount = 0;
             StartingDirection = startingDirection;
             StartingLength = startingLength;
             currentDirection = startingDirection;
@@ -292,8 +255,10 @@ namespace Snake
             segments = points;
         }
 
-        public Snake(int matrixSize, int startingLength, Direction startingDirection, List<Point> instructions)
+        public Snake(int matrixSize, int startingLength, Direction startingDirection, List<Point> instructions, List<int> eatHistory)
         {
+            this.eatHistory = eatHistory;
+            moveCount = 0;
             StartingDirection = startingDirection;
             StartingLength = startingLength;
             int midpoint = (int)Math.Round((float)matrixSize / 2);
@@ -370,6 +335,7 @@ namespace Snake
 
             if (newHeadPositon.X < 0 || newHeadPositon.X > Form1.matrix.GetLength(0) - 1 || newHeadPositon.Y < 0 || newHeadPositon.Y > Form1.matrix.GetLength(0) - 1)
             {
+                movementHistory.Add(new Point(newHeadPositon.X, newHeadPositon.Y));
                 Form1.State = GameState.Death;
                 return;
             }
@@ -388,6 +354,7 @@ namespace Snake
                         }
                         else
                         {
+                            movementHistory.Add(new Point(newHeadPositon.X, newHeadPositon.Y));
                             Form1.State = GameState.Death;
                         }
                         return;
@@ -396,6 +363,7 @@ namespace Snake
                         Form1.GenFood = true;
                         segments.Insert(0, new Point(newHeadPositon.X, newHeadPositon.Y));
                         movementHistory.Add(new Point(newHeadPositon.X, newHeadPositon.Y));
+                        eatHistory.Add(moveCount);
                         break;
                     case CellType.empty:
                         segments.Insert(0, new Point(newHeadPositon.X, newHeadPositon.Y));
@@ -407,9 +375,9 @@ namespace Snake
             //move tail
             var last = segments.Last();
             Form1.ChangeIndividualCellState(new int[last.X, last.Y], CellType.empty);
-            if(!grow)
+            if (!(grow || Form1.State == GameState.Replay && eatHistory.Contains(moveCount)))
                 segments.Remove(last);
-
+            moveCount++;
         }
 
         public void UpdateMatrix(CellType[,] matrix)
